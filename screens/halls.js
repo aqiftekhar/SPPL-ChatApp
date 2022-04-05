@@ -24,7 +24,10 @@ import {firebase} from '../FireAuthentcation';
         // console.log("Hall Users = " + this.state.user);
     };
     selectSeat = async(item) => {
-
+        if(item.key != 'Dev-1') // Implementation only in Dev-1 till now
+        {
+            return;
+        }
         // debugger;
         const dbRef = firebase.database().ref("Halls/" + item.key + "/");
         const snapshot = await dbRef.once('value');

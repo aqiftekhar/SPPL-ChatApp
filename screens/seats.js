@@ -80,7 +80,7 @@ import { rest } from 'lodash';
                   onPress: () => console.log("cancel Pressed"),
                   style: 'cancel', 
                 },
-                { text: 'Yes', onPress: () => this.cancelSeat(item) },
+                { text: 'Yes', onPress: () => this.DeleteBooking(item) },
               ]);            
         }
         else if(Object.keys(this.state.selectedItem).length == 0 ){
@@ -94,7 +94,7 @@ import { rest } from 'lodash';
               ]);
         } 
         else if (this.state.selectedItem.Id !== item.Id) {
-            await Alert.alert('SPPL Seat Reservation', 'You have already booked ' + this.state.selectedItem.key + '. Please cancle your previous booking to change your seat.', [
+            await Alert.alert('SPPL Seat Reservation', 'You have already booked ' + this.state.selectedItem.key + '. Please cancel your previous booking to change your seat.', [
                 // {
                 //   text: 'Cancel',
                 //   onPress: () => this.cancelSeat(item),
@@ -113,13 +113,24 @@ import { rest } from 'lodash';
         var booking = await this.isUserBookedSeat(item);
 debugger;
         // console.log("checkBooking = " + checkBooking);
-        
-        this.setState({selectedItem: item });  
+        if(booking)
+        {
+            this.setState({selectedItem: item });  
+        }
         console.log(this.state.selectedItem);
      }
      cancelSeat = async(item) => {
 
         await this.setState({selectedItem : {}});
+     }
+     
+     DeleteBooking = async(item) =>{
+        await this.setState({selectedItem : {}});
+        const date = moment(this.state.date).format('DDMMYYYY');
+        const dbRef =  firebase.database().ref("ReservedSeats");
+        
+        this.DeleteSeat(dbRef,item,date);
+               
      }
      isUserBookedSeat = async(item) => {
          debugger;
@@ -136,7 +147,7 @@ debugger;
         _.flatMap(seats, (content, seatKey) =>
           _.mapKeys(content.Bookings, (_, bookingKey) =>
             `${HallKey}_${seatKey}_${bookingKey}`))
-      )); 
+         )); 
 
     //   let dateFilter1 = [date];
     //         debugger;
@@ -179,7 +190,7 @@ debugger;
                 if (Object.keys(filterByEmail).length > 0) {
                     //Show Already Bookings
                     debugger;
-                    Alert.alert('SPPL Seat Reservation', 'You have already booked your seat for ' + moment(this.state.date).format('DD MMM YYYY') + '. Please cancle your previous booking to change your seat.', [
+                    Alert.alert('SPPL Seat Reservation', 'You have already booked your seat for ' + moment(this.state.date).format('DD MMM YYYY') + '. Please cancel your previous booking to change your seat.', [
     
                         { text: 'OK' }, 
                       ]);
@@ -189,20 +200,23 @@ debugger;
                     //Reserve new Seat
                     debugger;
                     const dbUpdate = await firebase.database().ref("ReservedSeats");
-                    await dbUpdate.child(this.state.selectedHall).update({
-                        [item.key]:
-                        {
-                            Id: item.Id,
-                            "Bookings": {
-                                [date]:{
-                                    "BookedAt" : moment([this.state.date]).format('DD/MM/YYYY HH:mm:ss'),
-                                    "BookedBy" : [this.state.email]
+                    return await this.ReserveSeat(dbUpdate,item,date);
+                    // await dbUpdate.child(this.state.selectedHall).update({
+                    //     [item.key]:
+                    //     {
+                    //         Id: item.Id,
+                    //         "Bookings": {
+                    //             [date]:{
+                    //                 // "BookedAt" : moment([this.state.date]).format('DD/MM/YYYY HH:mm:ss'),
+                    //                 // "BookedBy" : this.state.email
+                    //                 "BookedAt" : moment(this.state.date).format('DD/MM/YYYY HH:mm:ss'),
+                    //                 "BookedBy" : this.state.email
         
-                                }
-                            }    
-                        }
+                    //             }
+                    //         }    
+                    //     }
                         
-                    });
+                    // });
 
                 }
                 // console.log(emailFilter);   
@@ -212,25 +226,10 @@ debugger;
                 // );
                 // console.log(filterByEmail);
             } else{
-                debugger;
                 const dbUpdate = await firebase.database().ref("ReservedSeats");
-                await dbUpdate.child(this.state.selectedHall).update({
-                    [item.key]:
-                    {
-                        Id: item.Id,
-                        "Bookings": {
-                            [date]:{
-                                "BookedAt" : moment(new Date()).format('DD/MM/YYYY HH:mm:ss'),
-                                "BookedBy" : this.state.email 
-    
-                            }
-                        }    
-                    }
-        
-                });  
+                return await this.ReserveSeat(dbUpdate,item,date);
             }
                 
-
         }
          
         //  let date = moment(this.state.date).format('DDMMYYYY');
@@ -354,17 +353,119 @@ debugger;
             
         // }
      }
+     ReserveSeat = async (dbUpdate,item,date) =>{            
+        const dbGetSelectedHall = await dbUpdate.child(this.state.selectedHall);
+        const seatRecordExist = await this.isSeatDataExist(dbGetSelectedHall, dbUpdate , item);
+
+        if(seatRecordExist == null) {         
+            await dbUpdate.child(this.state.selectedHall).update({
+                [item.key]:
+                {
+                    Id: item.Id,
+                    "Bookings": {
+                        [date]:{
+                            // "BookedAt" : moment(this.state.date).format('DD/MM/YYYY HH:mm:ss'),
+                            "BookedAt" : moment(new Date()).format('DD/MM/YYYY HH:mm:ss'),
+                            "BookedBy" : this.state.email 
+
+                        }
+                    }    
+                }
+    
+            });  
+        }else {
+           const getBookings = seatRecordExist;      
+           const mergedBookings = _.merge({
+                                        [date]:{
+                                                "BookedAt" : moment(new Date()).format('DD/MM/YYYY HH:mm:ss'),
+                                                "BookedBy" : this.state.email
+                                            }
+                                      },getBookings); 
+          
+            await dbUpdate.child(this.state.selectedHall).child(item.key).child("Bookings").set(mergedBookings);  
+        }  
+        return true;  
+     }
+
+     isSeatDataExist = async(dbGetSelectedHall , dbUpdate , item) =>
+     {
+        const halls =  await (await dbGetSelectedHall.get()).val();
+        let recordExist = null;
+
+        if(halls != null)
+        {
+            let dbGetSeat = await dbUpdate.child(this.state.selectedHall);
+            if(dbGetSeat != null)
+            {
+                dbGetSeat = dbGetSeat.child(item.key);
+                const seatVal = await (await dbGetSeat.get()).val();
+               
+                if(seatVal != null)
+                {
+                    const dbGetSeatBookings = await dbGetSeat.child("Bookings");
+                    const seatBookings = await (await dbGetSeatBookings.get()).val();
+                   
+                    if(seatBookings != null)
+                    {
+                        recordExist = seatBookings; 
+                    }else {
+                        recordExist = null;
+                    }
+                }else {
+                    recordExist = null;
+                }
+            }else {
+                    recordExist = null;
+                }
+        }
+         return recordExist;
+     }
+     DeleteSeat = async(dbRef,item,date) =>{
+        debugger;
+        const dbGetHall = dbRef.child(this.state.selectedHall);
+        
+        if(dbGetHall != null)
+        {
+            const dbDeleteSeat = dbGetHall.child(item.key);
+            if((await dbDeleteSeat.get()).val() != null)
+            {
+                const dbGetBookings = dbDeleteSeat.child("Bookings");
+                
+                if((await dbGetBookings.get()).val() != null)
+                {                    
+                    const dbDeleteSeatDetail = dbGetBookings.child(date);
+
+                    if((await dbDeleteSeatDetail.get()).val() != null)
+                    {
+                        const bookingsDetail = (await dbGetBookings.get()).val();
+
+                        if(bookingsDetail != null)
+                        {
+                            if(Object.keys(bookingsDetail).length > 1)
+                            {
+                                dbDeleteSeatDetail.set(null);
+                            }else {
+                                dbDeleteSeat.set(null);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+     }   
+
      setDate = async(date) => {
          debugger;
         
         //  console.log(date);
-         this.setState({ date: date });
+         this.setState({ date: date ,selectedItem : {}});
+
         //  this.filterSeatsByDate();
          console.log(this.state.hallNames);
      }
 
      filterSeatsByDate = (item, bookingDate) =>{
-         debugger;
+        debugger;
         var data = this.state.reservedSeats.filter(seat => seat.Id ==item.Id).length > 0;
         if(data == true){
           var findSeat = this.state.reservedSeats.filter(seat => seat.Id == item.Id ).length > 0;
@@ -382,7 +483,7 @@ debugger;
                   let formatedDate = moment(date).format('DDMMYYYY');
                   const findSeatsToday = getBookings.filter(x=>x.key == formatedDate); 
                   if (findSeatsToday.length > 0) {
-                      debugger;
+                    debugger;
                     const BookedBy = getBookings.filter(x=>x.BookedBy == this.state.email);
                     if (BookedBy.length > 0) {
                         if (findSeatsToday.filter(x=>x.key == date).length > 0) {

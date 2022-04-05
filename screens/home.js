@@ -94,12 +94,12 @@ export default class Home extends React.Component{
                         </View>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.menuNext} onPress={this.sharewithHR} >
+                    {/* <TouchableOpacity style={styles.menuNext} onPress={this.sharewithHR} >
                         <View style={styles.buttons}>
                         <AntDesign name="wechat" size={40} color="white" style={{fontWeight:"800"}}/>
                             <Text style={styles.ChatText}>Share with HR</Text>
                         </View>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
 
                 </View>
 
