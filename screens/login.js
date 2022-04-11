@@ -1,7 +1,6 @@
 import React from "react";
 import {View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from '@expo/vector-icons'; 
-// import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../FireAuthentcation";
 
 export default class Login extends React.Component{
@@ -14,42 +13,21 @@ export default class Login extends React.Component{
         };
     };
 
-    // onLogin() {
-    //     const { username, password } = this.state;
-    
-    //     Alert.alert('Credentials', `${username} + ${password}`);
-    // }
-
     continue = () => {
-        // debugger;
-        // console.log(this.state.email);
         if (this.state.email !== '' && this.state.password !== '') {
             auth.signInWithEmailAndPassword( this.state.email, this.state.password)
             .then((userCredential) => {
                 console.log("login success");
                 const user = userCredential.user;
                 this.setState({user : JSON.stringify(user) });
-                debugger;
-                // this.props.navigation.navigate("Home", JSON.stringify({user: user}));
                 this.props.navigation.navigate("Home", this.state);
-                // console.log(this.props.navigation.params)
-                // ...
               })
               .catch((error) => {
                 const errorCode = error.code;
                 const errorMessage = error.message;
                 console.log(errorMessage);
-                // ..
               });
-            //    .then(() => console.log('Login success'))
-            //    .catch(err => console.log(`Login err: ${err}`));
            }
-
-        // this.props.navigation.navigate("Chat", {email: this.state.email});
-        // console.log(this.props.navigation.params)
-        // const { username, password } = this.state;
-    
-        // console.warn('Credentials', `${username} + ${password}`);
     };
     render(){
         return(
@@ -61,7 +39,6 @@ export default class Login extends React.Component{
                 </View>
 
                 <View style={styles.LoginForm}>
-                    {/* <Text style={styles.header}>Username</Text> */}
                     <TextInput style={styles.inputUsername} placeholder="Email" onChangeText={(email) => this.setState({ email })} value={this.state.email}/>
                     <TextInput style={styles.inputUsername} placeholder="Password" onChangeText={(password) => this.setState({ password })}  value={this.state.password} secureTextEntry={true}/>
                 </View>
@@ -80,9 +57,7 @@ export default class Login extends React.Component{
 const styles = StyleSheet.create({
     container: {
         flex:1,
-        backgroundColor: "#F4F5F7",
-        // justifyContent: "center",
-        // alignItems: "center"
+        backgroundColor: "#F4F5F7"
     },
     circle: {
         width: 500,
@@ -102,7 +77,6 @@ const styles = StyleSheet.create({
     },
     LoginForm:{
         marginHorizontal: 35,
-
         // flexDirection: 'column', // inner items will be added vertically
         // flexGrow: 1,            // all the available vertical space will be occupied by it
         // justifyContent: 'space-between' // will create the gutter between body and footer
@@ -111,7 +85,6 @@ const styles = StyleSheet.create({
         marginTop: 42,
         marginLeft: 15,
         height: 50,
-        // width: 200,
         borderWidth: StyleSheet.hairlineWidth,
         borderColor: "#BAB7C3",
         borderWidth:1,
@@ -121,7 +94,6 @@ const styles = StyleSheet.create({
         fontWeight: "600"
     },
     containerContinue:{
-        // alignSelf: "center",
         right:10,
         top:-20,
         alignItems: "flex-end",
