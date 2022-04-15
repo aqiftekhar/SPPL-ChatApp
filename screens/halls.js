@@ -90,7 +90,8 @@ import {firebase} from '../FireAuthentcation';
             <View style={{marginTop: 64}}>
                 <Image source={require("../assets/Stewart-logo-black.png")} style={{width:240, height:45, alignSelf:"flex-start", resizeMode: "contain"}}/>
             </View>
-        
+            <View style={styles.flatListView}>
+
         <FlatList style={{flex : 1, flexGrow :1}}  data={this.state.hallNames} renderItem={({item}) => 
         
                     <View style={styles.containerIcons} key={item}>
@@ -104,7 +105,7 @@ import {firebase} from '../FireAuthentcation';
         
         
         />
-        
+        </View>
 
 
     </View>
@@ -183,5 +184,8 @@ const styles = StyleSheet.create({
         alignItems: "center",
         left: 10
 
-    }
+    },
+    flatListView:{
+        height:"80%"
+    },
 });

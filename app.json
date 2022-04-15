@@ -4,11 +4,11 @@
     "slug": "SPPL-ChatApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/reservation-icon.png",
+    "icon": "./assets/Reservation-Icon.png",
     "splash": {
-      "image": "./assets/Stewart-logo-black.png",
+      "image": "./assets/Splash-Screen.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F4F5F7"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -21,8 +21,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/reservation-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "foregroundImage": "./assets/Reservation-Icon.png",
+        "backgroundColor": "#F4F5F7"
       }
     },
     "web": {

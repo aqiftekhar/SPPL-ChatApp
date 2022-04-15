@@ -2,6 +2,7 @@ import React from "react";
 import {View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from "react-native";
 import { AntDesign , MaterialIcons  } from '@expo/vector-icons'; 
 import {firebase} from '../FireAuthentcation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default class Home extends React.Component{
     constructor(props) {
@@ -13,31 +14,53 @@ export default class Home extends React.Component{
         }
     };
      bookSeat = async () => {
-        const dbRef = firebase.database().ref("Halls");
-        const snapshot = await dbRef.once('value');
-        const value = snapshot.val();
+         try {
+            this.props.LoadingService.showLoader("Getting Halls");
 
-        let keys = Object.keys(value);
+            const dbRef = firebase.database().ref("Halls");
+            const snapshot = await dbRef.once('value');
+            const value = snapshot.val();
+    
+            let keys = Object.keys(value);
+            
+            const getHallNames = keys.map( key => {
+                return {
+                    key, ...value[key],
+                    
+                }
+            
+            } );
+            this.setState( { hall: getHallNames } );
+            this.props.navigation.navigate("Halls", this.state);     
+         } catch (error) {
+             alert(error);
+         }finally{
+            this.props.LoadingService.hideLoader();
+         }
         
-        const getHallNames = keys.map( key => {
-            return {
-                key, ...value[key],
-                
-            }
-        
-        } );
-        this.setState( { hall: getHallNames } );
-        this.props.navigation.navigate("Halls", this.state);
     };
 
     sharewithHR = () => {
         this.props.navigation.navigate("Chat");
     }
+    LogOut = async ()=>{
+        try {
+            await AsyncStorage.removeItem('@isLoggedIn').then(() => {
+                this.props.navigation.navigate("Login");               
+            });
 
+          } catch(e) {
+            alert(error);
+        }    
+    }
     render(){
         return(
-            <View style={styles.container}>
-                <View style={styles.circle}/>
+            <View style={styles.container}>                
+             <View style={styles.circle}/>
+                
+                <TouchableOpacity onPress={this.LogOut}>
+                    <Image source={require("../assets/LogOut.png")} style={{width:50, height:45, alignSelf:"flex-end",marginTop:"10%",marginRight:"3%"}}></Image>
+                </TouchableOpacity>
                 <View style={{marginTop: 64}}>
                     <Image source={require("../assets/Stewart-logo-black.png")} style={{width:240, height:45, alignSelf:"flex-start", resizeMode: "contain"}}/>
                 </View>
@@ -59,6 +82,7 @@ export default class Home extends React.Component{
 
                 </View>
 
+   
             </View>
         )
     }

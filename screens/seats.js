@@ -5,6 +5,7 @@ import { FlatList } from 'react-native-gesture-handler';
 import DatePicker from 'react-native-datepicker';
 import moment from 'moment';
 import * as _ from 'lodash';
+import * as Constant from '../shared/constants';
 
   export default class Seats extends React.Component{
     constructor(props) {
@@ -49,38 +50,51 @@ import * as _ from 'lodash';
             'Warning: componentWillUpdate has been renamed, and is not recommended for use.',
             'Warning: DatePickerAndroid has been merged with DatePickerIOS and will be removed in a future release.',
         ]);
-        this.isSeatBooked();
+        this.isSeatBooked(true);
     }
 
-    isSeatBooked = () =>{
-        let date = moment(new Date(this.state.date)).format("DDMMYYYY");
-        let bookedItem = {};
-        
-        this.state.reservedSeats.filter(x=> 
+    isSeatBooked = (isDateChangedOrFirstRender = false) =>{
+        try {
+            if(isDateChangedOrFirstRender)
             {
-                let isBooked= false;
-                let result = Object.entries(x.Bookings).filter((key)=> key.includes(date))[0]; 
-                if(result != undefined) {
-                    if(result[1]?.BookedBy == this.state.email)
-                    {
-                        let bookedSeat = this.state.seats.filter(y=>y.Id == x.Id);
-                        if(bookedSeat?.length == 1)
+                this.props.LoadingService.showLoader("Searching Seat Please Wait");
+            }
+            let date = moment(new Date(this.state.date)).format(Constant.dateFormatWithoutDelimiter);
+            let bookedItem = {};
+            
+            this.state.reservedSeats.filter(x=> 
+                {
+                    let isBooked= false;
+                    let result = Object.entries(x.Bookings).filter((key)=> key.includes(date))[0]; 
+                    if(result != undefined) {
+                        if(result[1]?.BookedBy == this.state.email)
                         {
-                            bookedItem = bookedSeat[0];
-                            isBooked = true;  
+                            let bookedSeat = this.state.seats.filter(y=>y.Id == x.Id);
+                            if(bookedSeat?.length == 1)
+                            {
+                                bookedItem = bookedSeat[0];
+                                isBooked = true;  
+                            }
+                        }else{
+                            isBooked = false;
                         }
                     }else{
                         isBooked = false;
                     }
-                }else{
-                    isBooked = false;
+                    return isBooked;
                 }
-                return isBooked;
+            );
+                this.setState({
+                        selectedItem :bookedItem
+                    });  
+        } catch (error) {
+            alert(error);
+        }finally {
+            if(isDateChangedOrFirstRender)
+            {
+                this.props.LoadingService.hideLoader();
             }
-        );
-            this.setState({
-                    selectedItem :bookedItem
-                });  
+        }
      }
 
     selectSeat = async (item) => {
@@ -113,13 +127,22 @@ import * as _ from 'lodash';
 
      }
      bookSeat = async (item) => {
+        try {
+            this.props.LoadingService.showLoader("Booking Seat...");
 
-        var booking = await this.isUserBookedSeat(item);
+            var booking = await this.isUserBookedSeat(item);
 
-        if(booking)
-        {
-            this.setState({selectedItem: item });  
+            if(booking)
+            {
+                this.setState({selectedItem: item });  
+            }
+
+        } catch (error) {
+            alert(error);
+        }finally {
+            this.props.LoadingService.hideLoader();
         }
+       
      }
      cancelSeat = async(item) => {
 
@@ -127,140 +150,159 @@ import * as _ from 'lodash';
      }
      
      DeleteBooking = async(item) =>{
-         const date = moment(new Date(this.state.date)).format('DDMMYYYY');
-         const dbRef =  firebase.database().ref("ReservedSeats");
-         
-         this.DeleteSeat(dbRef,item,date);
-    
+         try {
+            this.props.LoadingService.showLoader("Cancelling Previous Booking...");
+
+            const date = moment(new Date(this.state.date)).format(Constant.dateFormatWithoutDelimiter);
+            const dbRef =  firebase.database().ref("ReservedSeats");
+            
+            await this.DeleteSeat(dbRef,item,date);
+         } catch (error) {
+             alert(error);
+         } finally {
+            this.props.LoadingService.hideLoader();
+         }    
      }
      isUserBookedSeat = async(item) => {
-        const db = firebase.database().ref("ReservedSeats"); 
-        const snap= await db.once('value');
-        const val = snap.val();
-        let date = moment(new Date(this.state.date)).format('DDMMYYYY');
-
-        let filterAllBookings = _.assign(..._.flatMap(val, (seats, HallKey) =>
-        _.flatMap(seats, (content, seatKey) =>
-          _.mapKeys(content.Bookings, (_, bookingKey) =>
-            `${HallKey}_${seatKey}_${bookingKey}`))
-         )); 
-
-         if (Object.keys(filterAllBookings).length > 0) {
-            let dateFilter = [date];
-
-            let filterByDate = _.pickBy(filterAllBookings, (value, key) =>
-                _.some(dateFilter, str => _.includes(key, str))
-                );
-            
-            if (Object.keys(filterByDate).length > 0) {
-
-                let emailFilter = [this.state.email];
-                let hallKey = "";
-                let seatId ="";
-                let filterByEmail = _.filter(filterByDate, (value,objKey) =>
-                _.some(emailFilter, str =>
-                    {
-                        let result = _.includes(value, str);
-                        if(result)
-                        {                            
-                            let arr = objKey.split('_');
-                            hallKey = arr.length > 0 ? arr[0] : "";
-                            seatId = arr.length > 1 ? arr[1]:"";
-                        }
-                        return result;
-                    }
-                     ) 
-                ); 
-
-                if (Object.keys(filterByEmail).length > 0) {
-                    //Show Already Bookings
-                    debugger;
-                    Alert.alert('SPPL Seat Reservation', 'You have already booked your '+seatId+' in '+ hallKey+' for ' + moment(new Date(this.state.date)).format('DD MMM YYYY') +'. Please cancel your previous booking to change your seat.', [
+         try {
+            const db = firebase.database().ref("ReservedSeats"); 
+            const snap= await db.once('value');
+            const val = snap.val();
+            let date = moment(new Date(this.state.date)).format(Constant.dateFormatWithoutDelimiter);
     
-                        { text: 'OK' }, 
-                      ]);
-                    return false;
-                }
-                else{
-                    //Reserve new Seat
+            let filterAllBookings = _.assign(..._.flatMap(val, (seats, HallKey) =>
+            _.flatMap(seats, (content, seatKey) =>
+              _.mapKeys(content.Bookings, (_, bookingKey) =>
+                `${HallKey}_${seatKey}_${bookingKey}`))
+             )); 
+    
+             if (Object.keys(filterAllBookings).length > 0) {
+                let dateFilter = [date];
+    
+                let filterByDate = _.pickBy(filterAllBookings, (value, key) =>
+                    _.some(dateFilter, str => _.includes(key, str))
+                    );
+                
+                if (Object.keys(filterByDate).length > 0) {
+    
+                    let emailFilter = [this.state.email];
+                    let hallKey = "";
+                    let seatId ="";
+                    let filterByEmail = _.filter(filterByDate, (value,objKey) =>
+                    _.some(emailFilter, str =>
+                        {
+                            let result = _.includes(value, str);
+                            if(result)
+                            {                            
+                                let arr = objKey.split('_');
+                                hallKey = arr.length > 0 ? arr[0] : "";
+                                seatId = arr.length > 1 ? arr[1]:"";
+                            }
+                            return result;
+                        }
+                         ) 
+                    ); 
+    
+                    if (Object.keys(filterByEmail).length > 0) {
+                        //Show Already Bookings
+                        debugger;
+                        Alert.alert('SPPL Seat Reservation', 'You have already booked your '+seatId+' in '+ hallKey+' for ' + moment(new Date(this.state.date)).format('DD MMM YYYY') +'. Please cancel your previous booking to change your seat.', [
+        
+                            { text: 'OK' }, 
+                          ]);
+                        return false;
+                    }
+                    else{
+                        //Reserve new Seat
+                        const dbUpdate = await firebase.database().ref("ReservedSeats");
+                        return await this.ReserveSeat(dbUpdate,item,date);
+                    }
+    
+                } else{
                     const dbUpdate = await firebase.database().ref("ReservedSeats");
                     return await this.ReserveSeat(dbUpdate,item,date);
                 }
-
-            } else{
-                const dbUpdate = await firebase.database().ref("ReservedSeats");
-                return await this.ReserveSeat(dbUpdate,item,date);
-            }
-                
-        }
+                    
+            }    
+         } catch (error) {
+             alert(error);
+         }
         return true;
      }
 
      ReserveSeat = async (dbUpdate,item,date) =>{            
-        const dbGetSelectedHall = await dbUpdate.child(this.state.selectedHall);
-        const seatRecordExist = await this.isSeatDataExist(dbGetSelectedHall, dbUpdate , item);
-
-        if(seatRecordExist == null) {         
-            await dbUpdate.child(this.state.selectedHall).update({
-                [item.key]:
-                {
-                    Id: item.Id,
-                    "Bookings": {
-                        [date]:{
-                            "BookedAt" : moment(new Date()).format('DD/MM/YYYY HH:mm:ss'),
-                            "BookedBy" : this.state.email 
-
-                        }
-                    }    
-                }
+        try {
+            const dbGetSelectedHall = await dbUpdate.child(this.state.selectedHall);
+            const seatRecordExist = await this.isSeatDataExist(dbGetSelectedHall, dbUpdate , item);
     
-            });  
-        }else {
-           const getBookings = seatRecordExist;      
-           const mergedBookings = _.merge({
-                                        [date]:{
-                                                "BookedAt" : moment(new Date()).format('DD/MM/YYYY HH:mm:ss'),
-                                                "BookedBy" : this.state.email
-                                            }
-                                      },getBookings); 
-          
-            await dbUpdate.child(this.state.selectedHall).child(item.key).child("Bookings").set(mergedBookings);  
-        }  
-        this.UpdateStateReserveSeat(dbUpdate);
+            if(seatRecordExist == null) {         
+                await dbUpdate.child(this.state.selectedHall).update({
+                    [item.key]:
+                    {
+                        Id: item.Id,
+                        "Bookings": {
+                            [date]:{
+                                "BookedAt" : moment(new Date()).format(Constant.dateTimeFormat),
+                                "BookedBy" : this.state.email 
+    
+                            }
+                        }    
+                    }
+        
+                });  
+            }else {
+               const getBookings = seatRecordExist;      
+               const mergedBookings = _.merge({
+                                            [date]:{
+                                                    "BookedAt" : moment(new Date()).format(Constant.dateTimeFormat),
+                                                    "BookedBy" : this.state.email
+                                                }
+                                          },getBookings); 
+              
+                await dbUpdate.child(this.state.selectedHall).child(item.key).child("Bookings").set(mergedBookings);  
+            }  
+            this.UpdateStateReserveSeat(dbUpdate); 
+        } catch (error) {
+            alert(error);
+        } 
         return true;  
      }
 
      isSeatDataExist = async(dbGetSelectedHall , dbUpdate , item) =>
      {
-        const halls =  await (await dbGetSelectedHall.get()).val();
-        let recordExist = null;
-
-        if(halls != null)
-        {
-            let dbGetSeat = await dbUpdate.child(this.state.selectedHall);
-            if(dbGetSeat != null)
+         let recordExist = null;
+         try {
+            const halls =  await (await dbGetSelectedHall.get()).val();
+    
+            if(halls != null)
             {
-                dbGetSeat = dbGetSeat.child(item.key);
-                const seatVal = await (await dbGetSeat.get()).val();
-               
-                if(seatVal != null)
+                let dbGetSeat = await dbUpdate.child(this.state.selectedHall);
+                if(dbGetSeat != null)
                 {
-                    const dbGetSeatBookings = await dbGetSeat.child("Bookings");
-                    const seatBookings = await (await dbGetSeatBookings.get()).val();
+                    dbGetSeat = dbGetSeat.child(item.key);
+                    const seatVal = await (await dbGetSeat.get()).val();
                    
-                    if(seatBookings != null)
+                    if(seatVal != null)
                     {
-                        recordExist = seatBookings; 
+                        const dbGetSeatBookings = await dbGetSeat.child("Bookings");
+                        const seatBookings = await (await dbGetSeatBookings.get()).val();
+                       
+                        if(seatBookings != null)
+                        {
+                            recordExist = seatBookings; 
+                        }else {
+                            recordExist = null;
+                        }
                     }else {
                         recordExist = null;
                     }
                 }else {
-                    recordExist = null;
-                }
-            }else {
-                    recordExist = null;
-                }
-        }
+                        recordExist = null;
+                    }
+            }
+         } catch (error) {
+             alert(error);
+         } 
          return recordExist;
      }
   
@@ -323,9 +365,13 @@ import * as _ from 'lodash';
             this.isSeatBooked();
     }
    
-    setDate = async(date) => {        
-         this.setState({ date: date ,selectedItem : {}});
-         this.isSeatBooked();
+    setDate = async(date,formatSeparator) => { 
+        if(this.state.date != date)
+        {
+            date = this.parseDate(date,formatSeparator);
+            this.setState({ date: date ,selectedItem : {}});
+            this.isSeatBooked(true);            
+        }
      }
 
      filterSeatsByDate = (item, bookingDate) =>{
@@ -344,14 +390,14 @@ import * as _ from 'lodash';
                       }
                   } );
                    let date = moment(new Date(bookingDate) );
-                  let formatedDate = moment(new Date(date)).format('DDMMYYYY');
+                  let formatedDate = moment(new Date(date)).format(Constant.dateFormatWithoutDelimiter);
                   const findSeatsToday = getBookings.filter(x=>x.key == formatedDate); 
                   if (findSeatsToday.length > 0) {
                     debugger;
                     const BookedBy = getBookings.filter(x=>x.BookedBy == this.state.email);
                     if (BookedBy.length > 0) {
-                        if (findSeatsToday.filter(x=>x.key == date.format("DDMMYYYY")).length > 0) {
-                            if (moment(new Date(date)).format('DDMMYYYY') == moment(new Date(this.state.date)).format('DDMMYYYY')) {                              
+                        if (findSeatsToday.filter(x=>x.key == date.format(Constant.dateFormatWithoutDelimiter)).length > 0) {
+                            if (moment(new Date(date)).format(Constant.dateFormatWithoutDelimiter) == moment(new Date(this.state.date)).format(Constant.dateFormatWithoutDelimiter)) {                              
                                 return false;
                             }
                         }
@@ -383,14 +429,20 @@ import * as _ from 'lodash';
                 return styles.seatAvailable
         }
       }
-
+      parseDate = (date,formatSeparator) => {
+        var dateArr = date.split(formatSeparator);
+        var month = moment().month(dateArr[1]).format("MM");
+        var date = dateArr[0];
+        var year = dateArr[2];
+        return new Date(year, month-1,date);
+      }
+      
       render(){
 
             if(this.state.seats == null)
             {
                 return <Text>Loading...</Text>
             }
-
 
        return(
 
@@ -405,7 +457,7 @@ import * as _ from 'lodash';
                     date={this.state.date} //initial date from state
                     mode="date" //The enum of date, datetime and time
                     placeholder="select date"
-                    format="DD/MMM/YYYY"
+                    format={Constant.datePickerFormat}
                         minDate={new Date()}
                     confirmBtnText="Confirm"
                     cancelBtnText="Cancel"
@@ -421,7 +473,7 @@ import * as _ from 'lodash';
                         },
                     }}
                     onDateChange={(date) => {
-                        this.setDate(date);
+                        this.setDate(date,Constant.dateFormatDelimiter);
                     }}
                     />
             </View>
@@ -449,7 +501,6 @@ import * as _ from 'lodash';
 
                     /> 
             </View>
-
     </View>
     
        )

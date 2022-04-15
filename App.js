@@ -10,20 +10,23 @@ import Home from "./screens/home";
 import Halls from './screens/halls';
 import Seats from './screens/seats';
 
+import LoaderContextProvider, {LoaderContextConsumer} from './screens/shared/LoaderContext';
 
 const Stack = createStackNavigator();
 
 export default function App() {
   LogBox.ignoreLogs(['Setting a timer']);
   return (
-    <NavigationContainer>
-    <Stack.Navigator>
-      <Stack.Screen name="Login" component={Login} options={{headerShown: false}}  />
-      <Stack.Screen name="Home" component={Home} options={{headerShown: false}}  />
-      <Stack.Screen name="Halls" component={Halls} options={{headerShown: false}}  />
-      <Stack.Screen name="Seats" component={Seats} options={{headerShown: false}}  />
-      <Stack.Screen name="Chat" component={Chat} options={{headerShown: false}} />
-    </Stack.Navigator>
-  </NavigationContainer>
+    <LoaderContextProvider>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen name="Login" component={LoaderContextConsumer(Login)} options={{headerShown: false}}  />
+          <Stack.Screen name="Home" component={LoaderContextConsumer(Home)} options={{headerShown: false}}  />
+          <Stack.Screen name="Halls" component={LoaderContextConsumer(Halls)} options={{headerShown: false}}  />
+          <Stack.Screen name="Seats" component={LoaderContextConsumer(Seats)} options={{headerShown: false}}  />
+          <Stack.Screen name="Chat" component={LoaderContextConsumer(Chat)} options={{headerShown: false}} />
+        </Stack.Navigator>
+    </NavigationContainer>
+    </LoaderContextProvider>
   );
 };
